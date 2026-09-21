@@ -74,5 +74,5 @@ Assistant Professor of Data Science
 Department of Mathematics and Statistics  
 Sam Houston State University  
 Huntsville, Texas, USA  
-Email: sxb218@shsu.edu  
+Email: biswas.sanad@shsu.edu  
 Alternate email: biswas.sanad@gmail.com

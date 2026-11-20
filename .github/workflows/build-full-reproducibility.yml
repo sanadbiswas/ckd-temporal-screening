@@ -1,0 +1,169 @@
+name: Build full Revision 1 reproducibility package
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-full-reproducibility.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  reproduce-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      OMP_NUM_THREADS: "2"
+      OPENBLAS_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+      MPLBACKEND: "Agg"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install pinned manuscript environment
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install \
+            numpy==2.4.6 \
+            pandas==2.2.3 \
+            scipy==1.16.3 \
+            scikit-learn==1.6.1 \
+            xgboost==3.4.1 \
+            lightgbm==4.7.0 \
+            imbalanced-learn==0.14.2 \
+            statsmodels==0.15.0 \
+            joblib==1.6.0 \
+            threadpoolctl==3.7.0 \
+            matplotlib==3.10.0 \
+            requests \
+            ipython \
+            jupyter
+
+      - name: Expand code archive
+        run: |
+          rm -rf ckd-project
+          unzip -q -o ckd-project.zip
+
+      - name: Run complete primary + revision pipeline
+        run: |
+          cat > /tmp/run_ckd.py <<'PY'
+          import os, sys, time
+          from pathlib import Path
+
+          root = Path("ckd-project").resolve()
+          os.chdir(root)
+          sys.path.insert(0, str(root))
+
+          from pipeline_runner import CKDPipelineRunner
+
+          r = CKDPipelineRunner(root)
+          t0 = time.time()
+
+          # Primary analysis: 00-25
+          r.setup()
+          r.prepare_data()
+          r.load_development_data()
+          r.build_preprocessor()
+          r.define_candidate_models()
+          r.define_metrics()
+          r.run_nested_cv()
+          r.run_bootstrap_uncertainty()
+          r.run_paired_model_comparison()
+          r.tune_final_model()
+          r.calibrate_model()
+          r.freeze_threshold()
+          r.fit_final_model()
+          r.build_temporal_cohort()
+          r.run_temporal_validation()
+          r.run_temporal_calibration()
+          r.run_decision_curve()
+          r.run_age_sensitivity()
+          r.run_outcome_component_sensitivity()
+          r.run_feature_set_sensitivity()
+          r.run_subgroup_analysis()
+          r.run_stratified_thresholds()
+          r.run_imbalance_sensitivity()
+          r.run_survey_weighted_evaluation()
+          r.run_permutation_importance()
+          r.finalize_outputs()
+
+          # Revision 1: 26-39
+          r.revision_setup()
+          r.run_cohort_description()
+          r.run_model_selection_revision()
+          r.run_comparators_and_ablation()
+          r.run_survey_weighted_threshold()
+          r.run_design_based_uncertainty()
+          r.run_calibration_uncertainty()
+          r.run_subgroup_uncertainty_and_policies()
+          r.run_age_dependence()
+          r.run_alcohol_missingness()
+          r.run_screening_scenarios()
+          r.run_correlated_importance()
+          r.run_blood_pressure_protocol()
+          r.finalize_revision_outputs()
+
+          # Figures: 40-41
+          r.export_figure_data()
+          r.make_figures()
+
+          print(f"Complete pipeline finished in {(time.time()-t0)/60:.1f} minutes")
+          PY
+          python /tmp/run_ckd.py
+
+      - name: Verify required outputs
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          root = Path("ckd-project")
+          required = [
+              root/"pipeline_runner.py",
+              root/"modules"/"41_make_figures.py",
+              root/"mlwa_results"/"MASTER_PERFORMANCE_TABLE.csv",
+              root/"mlwa_results"/"temporal_validation_metrics.csv",
+              root/"mlwa_results"/"revision_round1"/"REVISION_KEY_NUMBERS.json",
+              root/"mlwa_results"/"revision_round1"/"REVIEWER_COMMENT_OUTPUT_MAP.csv",
+              root/"mlwa_results"/"figures"/"internal_calibration_oof.png",
+              root/"mlwa_results"/"figures"/"calibration_transport.png",
+              root/"mlwa_results"/"figures"/"threshold_tradeoff_weighted_temporal.png",
+              root/"mlwa_results"/"figures"/"decision_curve_models_vs_rules_temporal.png",
+              root/"mlwa_results"/"figures"/"testing_burden_vs_cases_found_temporal.png",
+              root/"mlwa_results"/"figures"/"temporal_permutation_importance.png",
+          ]
+          missing = [str(p) for p in required if not p.exists()]
+          if missing:
+              raise SystemExit("Missing required outputs:\n" + "\n".join(missing))
+          files = [p for p in root.rglob("*") if p.is_file() and "__pycache__" not in p.parts]
+          print("Verified project files:", len(files))
+          print("Result files:", len([p for p in (root/"mlwa_results").rglob("*") if p.is_file()]))
+          PY
+
+      - name: Rebuild full ZIP with results
+        run: |
+          find ckd-project -type d -name '__pycache__' -prune -exec rm -rf {} +
+          rm -f ckd-project.zip
+          zip -q -r ckd-project.zip ckd-project
+          sha256sum ckd-project.zip > SHA256SUMS.txt
+          ls -lh ckd-project.zip
+          cat SHA256SUMS.txt
+
+      - name: Commit full ZIP and unzipped project
+        run: |
+          git config user.name "Sanad Biswas"
+          git config user.email "biswas.sanad@shsu.edu"
+          git add -f ckd-project ckd-project.zip SHA256SUMS.txt
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "Publish full Revision 1 code and generated results"
+          git push

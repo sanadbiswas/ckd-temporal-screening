@@ -1,78 +1,101 @@
-# Temporal Validation of a Non-Laboratory Machine Learning Framework for CKD Screening
+# CKD Temporal Screening — MLWA Revision 1
 
-This repository contains the analysis code and reproducibility materials for:
+Reproducibility repository for:
 
 **Temporal Validation of a Non-Laboratory Machine Learning Framework for Chronic Kidney Disease Screening in U.S. Adults**
 
-The study develops a non-laboratory CKD screening model using NHANES 2017–2018 and evaluates the frozen pipeline on NHANES August 2021–August 2023.
+Manuscript: **MLWA-D-26-01812**, *Machine Learning with Applications*.
 
-## Study design
+## Final Revision 1 code
 
-- Development cohort: NHANES 2017–2018
-- Temporal validation cohort: NHANES August 2021–August 2023
-- Primary model: sigmoid-calibrated histogram gradient boosting
-- Predictors: 12 routinely available non-laboratory variables
-- Primary outcome: single-visit CKD-compatible screening phenotype defined as eGFR < 60 mL/min/1.73 m² or urinary ACR ≥ 30 mg/g
-- Final analytic sample sizes: 5,063 development participants and 5,552 temporal-validation participants
+The final reviewer-revision pipeline is distributed as:
 
-Participants with missing serum creatinine or urinary ACR are excluded before outcome construction in both cohorts.
+- **`ckd-project.zip`** — the complete modular project used for Revision 1.
+- **`ckd-runner-colab.ipynb`** — Google Colab runner that pins the manuscript environment and executes the complete pipeline.
 
-## Repository structure
+The archive contains **42 ordered modules (00–41)**, `pipeline_runner.py`, the corrected development dataset (`nhanes_ckd_risk_clean.csv`), requirements, changelogs, and figure-generation code.
+
+Modules 00–25 reproduce the primary analysis. Modules 26–39 implement reviewer-requested analyses. Modules 40–41 export the figure data and generate the manuscript figures.
+
+The older pre-revision code remains available in Git history; the files on `main` are the Revision 1 reproducibility release.
+
+## Reproduce in Google Colab
+
+1. Download `ckd-project.zip` and `ckd-runner-colab.ipynb`.
+2. Put `ckd-project.zip` in:
+   `My Drive/CKD-Paper-Final/`
+3. Open `ckd-runner-colab.ipynb` in Google Colab.
+4. Choose **Runtime → Run all**.
+5. If the first environment cell changes an already-loaded package, restart the runtime and **Run all** once more.
+
+The runner checks that all 42 modules are present, executes them in order, and prints reproduction checks against the manuscript's anchor results.
+
+## Reproduction environment
+
+The manuscript results were reproduced on Linux with two CPU cores using:
 
 ```text
-.
-├── ckd-runner.ipynb
-├── pipeline_runner.py
-├── requirements.txt
-├── modules/
-│   ├── 00_setup.py
-│   ├── 01_data_preparation.py
-│   ├── ...
-│   └── 25_reproducibility_and_master_table.py
-└── ckd_results/
+Python              3.13.18
+numpy               2.4.6
+pandas              2.2.3
+scipy               1.16.3
+scikit-learn        1.6.1
+xgboost             3.4.1
+lightgbm            4.7.0
+imbalanced-learn    0.14.2
+statsmodels         0.15.0
+joblib              1.6.0
+threadpoolctl       3.7.0
 ```
 
-The cleaned 2017–2018 development dataset is rebuilt directly from the public CDC/NCHS NHANES XPT files by `modules/01_data_preparation.py`. The temporal cohort is reconstructed independently from the public NHANES 2021–2023 files during the analysis.
+The runner pins the Python packages above. The manuscript documents a platform-specific XGBoost near-tie observed on Windows; the published values were reproduced with the Linux environment above.
 
-## Reproducing the analysis
+## Corrected cohorts
 
-Install the required packages:
+The outcome-lab correction excludes participants with missing serum creatinine or urinary ACR **before** constructing the single-visit CKD-compatible phenotype.
 
-```bash
-pip install -r requirements.txt
-```
+- Development (NHANES 2017–2018): **5,063 adults; 939 phenotype-positive**
+- Temporal validation (NHANES 2021–2023): **5,552 adults; 949 phenotype-positive**
 
-Run `ckd-runner.ipynb` from top to bottom. The runner rebuilds the development dataset, executes all modular analysis stages in sequence, and writes generated tables and figures to `ckd_results/`.
+The obsolete pre-fix 5,533-row development dataset is not used.
 
-## Reproducibility safeguards
+## Anchor results
 
-Outcome-defining laboratory values are handled explicitly. Participants are excluded before phenotype construction when serum creatinine (`LBXSCR`) or urinary ACR (`URDACT`) is missing. Laboratory variables used to construct the outcome are removed before modeling.
+- Internal calibrated ROC-AUC: **0.7864**
+- Temporal ROC-AUC: **0.7949**
+- Frozen primary threshold: **0.1239**
+- Temporal sensitivity / specificity: **0.8251 / 0.6037**
+- Survey-weighted temporal sensitivity at primary threshold: **0.7671**
+- Survey-weighted development threshold: **0.0948**
+- Survey-weighted temporal sensitivity at refined threshold: **0.8012**
 
-The final screening threshold is derived from development out-of-fold predictions and applied unchanged to the temporal cohort.
+## Revision 1 analyses
 
-## Results
+The revision code adds, among other analyses:
 
-The `ckd_results/` directory contains the manuscript-aligned performance tables, calibration summaries, subgroup analyses, sensitivity analyses, survey-weighted results, decision-curve outputs, permutation importance, reproducibility metadata, and figures.
+- calibrated comparison of all model families and fully nested evaluation;
+- calibrated logistic-regression and reduced-predictor benchmarks;
+- risk-factor screening rules and burden-matched comparisons;
+- survey-weighted threshold selection;
+- Rao–Wu design-based uncertainty using NHANES strata and PSUs;
+- calibration confidence intervals and threshold-local calibration;
+- subgroup confidence intervals and screening-policy comparisons;
+- age-only, age-removed, and outcome-component analyses;
+- alcohol-missingness sensitivity analyses;
+- screening scenarios and decision-curve interpretation;
+- grouped permutation importance for correlated predictors;
+- blood-pressure protocol sensitivity analysis.
 
-The main manuscript figures are stored in the native formats produced by the analysis code, including PNG and EPS files.
+## Data
 
-- `internal_calibration_oof`
-- `calibration_transport`
-- `decision_curve_temporal`
-- `temporal_permutation_importance`
+NHANES source data are publicly available from the U.S. CDC/NCHS. The project archive includes the corrected cleaned development dataset and can rebuild it from the public raw NHANES files.
 
-## Data source
+## Archive integrity
 
-NHANES data are publicly available from the U.S. Centers for Disease Control and Prevention, National Center for Health Statistics:
+SHA-256 for `ckd-project.zip`:
 
-https://www.cdc.gov/nchs/nhanes/
+`b8918a8b1b7f53abecef065edaa1010996c8c0bb6aeae4391bd081c44389a1eb`
 
-## Corresponding author
+## License
 
-**Sanad Biswas, Ph.D.**  
-Assistant Professor of Data Science  
-Department of Mathematics and Statistics  
-Sam Houston State University  
-Huntsville, Texas, USA  
-Email: biswas.sanad@shsu.edu  
-Alternate email: biswas.sanad@gmail.com
+MIT License.

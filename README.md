@@ -11,7 +11,10 @@ Manuscript: **MLWA-D-26-01812**, *Machine Learning with Applications*.
 The final reviewer-revision pipeline is distributed as:
 
 - **`ckd-project.zip`** — the complete modular project used for Revision 1.
-- **`ckd-runner-colab.ipynb`** — Google Colab runner that pins the manuscript environment and executes the complete pipeline.
+- **`ckd-runner-colab.ipynb`** — Google Colab runner that pins the manuscript environment, executes the complete pipeline, and stops if the published values are not reproduced.
+- **`mlwa_results_revision1.zip`** — the result files and figures from the run reported in the manuscript.
+- **`modules/`, `pipeline_runner.py`, `make_figures.py`, `requirements.txt`** — the same code as in the archive, unpacked for browsing.
+- **`nhanes_ckd_risk_clean.csv`** — the corrected development dataset.
 
 The archive contains **42 ordered modules (00–41)**, `pipeline_runner.py`, the corrected development dataset (`nhanes_ckd_risk_clean.csv`), requirements, changelogs, and figure-generation code.
 
@@ -32,7 +35,7 @@ The runner checks that all 42 modules are present, executes them in order, and p
 
 ## Reproduction environment
 
-The manuscript results were reproduced on Linux with two CPU cores using:
+The manuscript results were reproduced on Linux (Google Colab, on both 2-core and 8-core machines) using:
 
 ```text
 Python              3.13.18
@@ -92,9 +95,10 @@ NHANES source data are publicly available from the U.S. CDC/NCHS. The project ar
 
 ## Archive integrity
 
-SHA-256 for `ckd-project.zip`:
+SHA-256 checksums (also in `SHA256SUMS.txt`):
 
-`b8918a8b1b7f53abecef065edaa1010996c8c0bb6aeae4391bd081c44389a1eb`
+- `ckd-project.zip`: `6c11670463b5102ccabf8debbdeaf95ed2d6204dbdb40bc6e67279df8a2812b7`
+- `mlwa_results_revision1.zip`: `0c820b7e425800859dd7c48a593281547d81e836cb078726299d01976bf3ab50`
 
 ## License
 
